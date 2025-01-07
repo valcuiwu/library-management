@@ -15,7 +15,7 @@ const {
     nanoid
 } = require('nanoid')
 const db = require('../database/index')
-const mailer = require('../middleware/mail')
+// const mailer = require('../middleware/mail')
 
 // 用户&管理员登录
 exports.login = async (req, res, next) => {
@@ -30,6 +30,7 @@ exports.login = async (req, res, next) => {
         let result = true
         let id, name
         await db.startQuery(sql).then(ret => {
+            //如果查询结果为空
             if (!ret[0]) {
                 result = false
             } else {
@@ -112,7 +113,7 @@ exports.register = async (req, res, next) => {
     }
     // 生成用户唯一的nano_id
     let nano_id = nanoid()
-    // // 获取到了注册用户输入的昵称和密码，开始注册
+    // 获取到了注册用户输入的昵称和密码，开始注册
     let sql =
         `INSERT INTO user (id,name,password,mail_num,stu_id)
      VALUES(${db.escape(nano_id)},
@@ -291,14 +292,17 @@ exports.returnBook = async (req, res, next) => {
         await db.startQuery(sql).then(res => {
             ret = res[0].hasBook
         })
+        //使用 & 作为分隔符
         ret = ret.replace(`&${req.body.book_id}`, '')
         let sql1 = `UPDATE user SET hasBook = '${ret}' WHERE id = ${db.escape(req.body.id)}`
         let sql2 = `UPDATE book SET state = 'available',due = '' WHERE book_id = ${db.escape(req.body.book_id)}`
         db.pool.getConnection(async function (err, connection) {
+            //从数据库连接池中获取一个连接，并执行后续操作
             connection.beginTransaction(function (err) {
                 if (err) {
                     next(err)
-                }
+
+
                 connection.query(sql1, function (error, results, fields) {
                     if (error) {
                         return connection.rollback(function () {
@@ -321,6 +325,7 @@ exports.returnBook = async (req, res, next) => {
                     })
                 })
                 connection.release()
+                }
             })
         })
         res.status(200).send('ok')

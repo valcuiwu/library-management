@@ -36,7 +36,7 @@ exports.adminRegister = async (req, res, next) => {
     }
 }
 
-// 管理员页面验证拦截
+// 管理员页面验证拦截(验证管理员登录状态)
 exports.adminValidate = async (req, res, next) => {
     try {
         // 从请求头中获取token数据
@@ -44,6 +44,7 @@ exports.adminValidate = async (req, res, next) => {
         token = token ?
             token.split('Bearer ')[1] :
             null
+        //验证JWT令牌有效性，并检查令牌中是否包含管理员ID
         if (!token) {
             return res.status(401).end()
         }
@@ -58,14 +59,16 @@ exports.adminValidate = async (req, res, next) => {
     }
 }
 
-// 管理员获取请求列表
+// 管理员获取借阅请求列表
 exports.adminGetBorrowList = async (req, res, next) => {
     try {
         let sql = `SELECT * FROM book WHERE state LIKE 'wait_check_%'`
         let ret
+        //变量 ret 用于存储查询结果
         await db.startQuery(sql).then(res => {
             ret = res
         })
+        //响应客户端
         res.status(200).json({
             bookList: ret
         })
@@ -77,6 +80,7 @@ exports.adminGetBorrowList = async (req, res, next) => {
 // 管理员同意借阅请求 ( 事务 )
 exports.adminAgreeBorrow = async (req, res, next) => {
     try {
+        //将 req.body.id 的值进行转义处理，防止 SQL 注入
         let sql = `SELECT hasBook FROM user WHERE id = ${db.escape(req.body.id)}`
         let ret
         await db.startQuery(sql).then(res => {
@@ -85,16 +89,19 @@ exports.adminAgreeBorrow = async (req, res, next) => {
         ret += `&${req.body.book_id}`
         let current = new Date()
         let due = current.setDate(current.getDate() + 120)
+        //YYYY-MM-DD 格式
         due = new Date(parseInt(due)).toLocaleString().substring(0, 9)
         let state = db.escape('occupied_' + req.body.id)
         let sql1 = `UPDATE book SET state = ${state},due = '${due}'
         WHERE book_id = ${db.escape(req.body.book_id)}`
-        let sql2 = `UPDATE user SET hasBook = ${db.escape(ret)} WHERE id = ${db.escape(req.body.id)}`
+        let sql2 = `UPDATE user SET hasBook = ${db.escape(ret)} 
+        WHERE id = ${db.escape(req.body.id)}`
         db.pool.getConnection(async function (err, connection) {
             connection.beginTransaction(function (err) {
                 if (err) {
                     next(err)
                 }
+                //开始一个数据库事务，确保以下操作要么全部成功，要么全部失败，确保一致性
                 connection.query(sql1, function (error, results, fields) {
                     if (error) {
                         return connection.rollback(function () {
@@ -128,10 +135,11 @@ exports.adminAgreeBorrow = async (req, res, next) => {
 // 管理员添加书本
 exports.adminAddBook = async (req, res, next) => {
     try {
+        //获取 book 表中书籍的总数
         let preSql = 'SELECT COUNT(*) AS COUNT FROM book'
         let book_id
         await db.startQuery(preSql).then(res => {
-            book_id = res[0].COUNT
+            book_id = res[0].COUNT+1
         })
         let sql = `INSERT INTO book (book_id,book_name,author,statement,state,due)
         VALUES (
@@ -153,9 +161,12 @@ exports.adminAddBook = async (req, res, next) => {
 exports.adminGetBooks = async (req, res, next) => {
     try {
         let query = req.query.book_name
+        //存储处理后的查询字符串片段
         let query_arr = []
+        //存储当前处理的字符片段
         let loopVar
         for (let i = 0; i < query.length; i++) {
+            //将每个字符后面加上 %，形成一个模糊匹配的片段
             loopVar = query[i] + '%'
             query_arr.push(loopVar)
         }

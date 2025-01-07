@@ -7,9 +7,13 @@ const errorHandler = require('./middleware/error-handler')
 
 // 自定义跨域中间件
 var allowCors = function (req, res, next) {
+    //允许所有来源的跨域请求
     res.header('Access-Control-Allow-Origin', '*')
+    //允许的 HTTP 请求方法
     res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE')
+    //允许的请求头字段
     res.header('Access-Control-Allow-Headers', 'Content-Type,Access-Token,Appid,Secret,Authorization')
+    //允许发送凭据（如 cookies）
     res.header('Access-Control-Allow-Credentials', 'true')
     next()
   }

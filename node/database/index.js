@@ -25,7 +25,9 @@ async function startQuery(sql) {
     try {
         //async函数返回值为Promise对象，因此创建Promise,在Promise中进行查询操作
         const promise = new Promise((resolve, reject) => {
+            //从连接池中获取一个数据库连接
             let a = pool.getConnection(async function (err, connection) {
+                //使用获取的连接执行 SQL 查询
                 connection.query(sql, async function (err, result, field) {
                     if (err) {
                         console.error("ERROR---" + err.sqlMessage)
